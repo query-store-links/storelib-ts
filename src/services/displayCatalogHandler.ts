@@ -115,13 +115,14 @@ export class DisplayCatalogHandler {
             if (response.status === 200) {
                 this.Result = DisplayCatalogResult.Found;
                 this.IsFound = true;
-                this.ProductListing = response.data;
+                const listing = response.data as DisplayCatalogModel;
+                this.ProductListing = listing;
                 // 如果返回的是 Products 数组而没有 Product 属性，则标准化设置 Product 为首个元素
-                if (!this.ProductListing.Product && this.ProductListing.Products && this.ProductListing.Products.length > 0) {
-                    this.ProductListing.Product = this.ProductListing.Products[0];
+                if (!listing.Product && listing.Products && listing.Products.length > 0) {
+                    listing.Product = listing.Products[0];
                 }
                 // 记录获取到的产品标题
-                const product = this.ProductListing?.Product || this.ProductListing?.Products?.[0];
+                const product = listing.Product || listing.Products?.[0];
             } else {
                 this.Result = DisplayCatalogResult.NotFound;
             }

@@ -1,7 +1,4 @@
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import * as crypto from 'crypto';
-import axios from 'axios';
+// Uses Fetch API and Cache; compatible with Cloudflare Workers
 import { ImagePurpose } from '../types/datatypes';
 import { DisplayCatalogModel } from '../types/dcat';
 
@@ -38,26 +35,42 @@ export class ImageHelpers {
    */
   public static async CacheImageAsync(
     ImageUri: string,
-    CachePath: string,
+    _CachePath: string,
     OverwriteCache: boolean
-  ): Promise<Buffer> {
-    const hashedUri = crypto.createHash('md5').update(ImageUri).digest('hex');
-    const fullPath = path.join(CachePath, hashedUri);
-
+  ): Promise<Uint8Array> {
     try {
-      const exists = await fs.access(fullPath).then(() => true).catch(() => false);
+      const keyHash = await (async () => {
+        const data = new TextEncoder().encode(ImageUri);
+        const digest = await crypto.subtle.digest('SHA-256', data);
+        return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+      })();
 
-      if (OverwriteCache || !exists) {
-        await fs.mkdir(CachePath, { recursive: true });
+      const cache = (globalThis as any).caches;
+      const request = new Request(ImageUri, { method: 'GET' });
 
-        const response = await axios.get(ImageUri, { responseType: 'arraybuffer' });
-        const imageBuffer = Buffer.from(response.data);
+      if (cache) {
+        if (!OverwriteCache) {
+          const cached = await cache.match(request);
+          if (cached) {
+            const buf = await cached.arrayBuffer();
+            return new Uint8Array(buf);
+          }
+        }
 
-        await fs.writeFile(fullPath, imageBuffer);
-        return imageBuffer;
-      } else {
-        return await fs.readFile(fullPath);
+        const response = await fetch(ImageUri);
+        const buffer = await response.arrayBuffer();
+
+        if (response.ok) {
+          await cache.put(request, new Response(buffer, { headers: { 'Content-Type': response.headers.get('content-type') || 'application/octet-stream' } }));
+        }
+
+        return new Uint8Array(buffer);
       }
+
+      // Fallback to fetch-only behavior
+      const response = await fetch(ImageUri);
+      const buf = await response.arrayBuffer();
+      return new Uint8Array(buf);
     } catch (error) {
       throw new Error(`Failed to cache image: ${(error as Error).message}`);
     }

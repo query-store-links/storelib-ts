@@ -1,11 +1,14 @@
-import * as crypto from 'crypto'; 
-
 export class CorrelationVector {
   private base: string;
   private extension: number;
 
   constructor() {
-    this.base = crypto.randomBytes(12).toString('base64').substring(0, 16);
+    const bytes = crypto.getRandomValues(new Uint8Array(12));
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    this.base = btoa(binary).substring(0, 16);
     this.extension = 0;
   }
 

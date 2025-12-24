@@ -1,5 +1,4 @@
-import * as fs from 'fs';
-import * as path from 'path';
+// In Cloudflare Workers there is no filesystem; we'll load XML templates via fetch(new URL(..., import.meta.url)) and cache them in memory to avoid repeated fetches.
 import { DOMParser } from 'xmldom';
 import * as he from 'he';
 import { MSHttpClient } from './MSHttpClient';
@@ -11,13 +10,33 @@ export class FE3Handler {
   private static readonly _httpClient = new MSHttpClient();
   private static readonly _msaToken = "<Device>dAA9AEUAdwBBAHcAQQBzAE4AMwBCAEEAQQBVADEAYgB5AHMAZQBtAGIAZQBEAFYAQwArADMAZgBtADcAbwBXAHkASAA3AGIAbgBnAEcAWQBtAEEAQQBMAGoAbQBqAFYAVQB2AFEAYwA0AEsAVwBFAC8AYwBDAEwANQBYAGUANABnAHYAWABkAGkAegBHAGwAZABjADEAZAAvAFcAeQAvAHgASgBQAG4AVwBRAGUAYwBtAHYAbwBjAGkAZwA5AGoAZABwAE4AawBIAG0AYQBzAHAAVABKAEwARAArAFAAYwBBAFgAbQAvAFQAcAA3AEgAagBzAEYANAA0AEgAdABsAC8AMQBtAHUAcgAwAFMAdQBtAG8AMABZAGEAdgBqAFIANwArADQAcABoAC8AcwA4ADEANgBFAFkANQBNAFIAbQBnAFIAQwA2ADMAQwBSAEoAQQBVAHYAZgBzADQAaQB2AHgAYwB5AEwAbAA2AHoAOABlAHgAMABrAFgAOQBPAHcAYQB0ADEAdQBwAFMAOAAxAEgANgA4AEEASABzAEoAegBnAFQAQQBMAG8AbgBBADIAWQBBAEEAQQBpAGcANQBJADMAUQAvAFYASABLAHcANABBAEIAcQA5AFMAcQBhADEAQgA4AGsAVQAxAGEAbwBLAEEAdQA0AHYAbABWAG4AdwBWADMAUQB6AHMATgBtAEQAaQBqAGgANQBkAEcAcgBpADgAQQBlAEUARQBWAEcAbQBXAGgASQBCAE0AUAAyAEQAVwA0ADMAZABWAGkARABUAHoAVQB0AHQARQBMAEgAaABSAGYAcgBhAGIAWgBsAHQAQQBUAEUATABmAHMARQBGAFUAYQBRAFMASgB4ADUAeQBRADgAagBaAEUAZQAyAHgANABCADMAMQB2AEIAMgBqAC8AUgBLAGEAWQAvAHEAeQB0AHoANwBUAHYAdAB3AHQAagBzADYAUQBYAEIAZQA4AHMAZwBJAG8AOQBiADUAQQBCADcAOAAxAHMANgAvAGQAUwBFAHgATgBEAEQAYQBRAHoAQQBYAFAAWABCAFkAdQBYAFEARQBzAE8AegA4AHQAcgBpAGUATQBiAEIAZQBUAFkAOQBiAG8AQgBOAE8AaQBVADcATgBSAEYAOQAzAG8AVgArAFYAQQBiAGgAcAAwAHAAUgBQAFMAZQBmAEcARwBPAHEAdwBTAGcANwA3AHMAaAA5AEoASABNAHAARABNAFMAbgBrAHEAcgAyAGYARgBpAEMAUABrAHcAVgBvAHgANgBuAG4AeABGAEQAbwBXAC8AYQAxAHQAYQBaAHcAegB5AGwATABMADEAMgB3AHUAYgBtADUAdQBtAHAAcQB5AFcAYwBLAFIAagB5AGgAMgBKAFQARgBKAFcANQBnAFgARQBJADUAcAA4ADAARwB1ADIAbgB4AEwAUgBOAHcAaQB3AHIANwBXAE0AUgBBAFYASwBGAFcATQBlAFIAegBsADkAVQBxAGcALwBwAFgALwB2AGUATAB3AFMAawAyAFMAUwBIAGYAYQBLADYAagBhAG8AWQB1AG4AUgBHAHIAOABtAGIARQBvAEgAbABGADYASgBDAGEAYQBUAEIAWABCAGMAdgB1AGUAQwBKAG8AOQA4AGgAUgBBAHIARwB3ADQAKwBQAEgAZQBUAGIATgBTAEUAWABYAHoAdgBaADYAdQBXADUARQBBAGYAZABaAG0AUwA4ADgAVgBKAGMAWgBhAEYASwA3AHgAeABnADAAdwBvAG4ANwBoADAAeABDADYAWgBCADAAYwBZAGoATAByAC8ARwBlAE8AegA5AEcANABRAFUASAA5AEUAawB5ADAAZAB5AEYALwByAGUAVQAxAEkAeQBpAGEAcABwAGgATwBQADgAUwAyAHQANABCAHIAUABaAFgAVAB2AEMAMABQADcAegBPACsAZgBHAGsAeABWAG0AKwBVAGYAWgBiAFEANQA1AHMAdwBFAD0AJgBwAD0A</Device>"; 
 
-  private static GetResourceTextFile(filename: string): string {
-    const filePath = path.join(process.cwd(), 'src', 'xml', filename);
-    return fs.readFileSync(filePath, 'utf8');
+  private static _templateCache: Record<string, string> = {};
+
+  private static async GetResourceTextFile(filename: string): Promise<string> {
+    if (this._templateCache[filename]) return this._templateCache[filename];
+
+    // Try a platform-appropriate way to load the file:
+    // 1) In ESM build for Workers, use import.meta.url + fetch
+    // 2) In Node (tests), fall back to reading from the filesystem
+    let txt: string;
+    const importMetaUrl = (new Function('return typeof import.meta !== "undefined" ? import.meta.url : undefined'))();
+
+    if (importMetaUrl) {
+      const url = new URL(`../xml/${filename}`, importMetaUrl);
+      txt = await (await fetch(url.toString())).text();
+    } else {
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      const fullPath = path.join(__dirname, '..', 'xml', filename);
+      txt = await fs.readFile(fullPath, 'utf8');
+    }
+
+    this._templateCache[filename] = txt;
+    return txt;
   }
 
   public static async GetCookieAsync(): Promise<string> {
-    const xml = this.GetResourceTextFile('GetCookie.xml');
+    const xml = await this.GetResourceTextFile('GetCookie.xml');
     
     const response = await this._httpClient.post<string>(
       Endpoints.FE3Delivery.toString(),
@@ -32,7 +51,7 @@ export class FE3Handler {
 
   public static async SyncUpdatesAsync(WuCategoryID: string, MSAToken: string | null = null): Promise<string> {
     const cookie = await this.GetCookieAsync();
-    let xml = this.GetResourceTextFile('WUIDRequest.xml');
+    let xml = await this.GetResourceTextFile('WUIDRequest.xml');
     xml = xml.replace('{0}', cookie)
              .replace('{1}', WuCategoryID)
              .replace('{2}', MSAToken || this._msaToken);
@@ -89,7 +108,7 @@ export class FE3Handler {
     MSAToken: string | null = null
   ): Promise<string[]> {
     const uris: string[] = [];
-    const template = this.GetResourceTextFile('FE3FileUrl.xml');
+    const template = await this.GetResourceTextFile('FE3FileUrl.xml');
 
     for (let i = 0; i < UpdateIDs.length; i++) {
       const xml = template.replace('{0}', UpdateIDs[i])
